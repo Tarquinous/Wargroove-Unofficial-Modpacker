@@ -1,0 +1,161 @@
+File Patching System:
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+    ModPacker offers a File Patching System starting with version 1.5.0.
+    Mods using patches are more likely to be compatible with each other than mods directly editing files,
+    as the system can apply any number of patches to the same file.
+    
+    Modifying the files directly would instead completely replace the original with the modified version.
+    (With the exception of image files)
+    If two mods modified the same file one would thus always override the changes from the other.
+    
+    Any change that can be made using a patch instead of a direct modification is thus recommended to 
+    be actually made with a patch.
+    
+    
+    Creating patches:
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
+    Patches can be created by creating files in the /patches/ directory.
+    The patches will be included in packed mods and pressing "Apply current changes" will also apply all patches in /patches/
+    
+    A patch file can have any name you want and you can even create directories and patch the same file multiple times.
+    
+    A patch file always is a text file encoded with UTF-8 and has this structure:
+        patches:[path_to_patched_file]
+        <patches:[path_to_another_patched_file]>
+        <...>
+        [patch_content]
+    
+    It contains atleast one "patches: declaration" but can contain any amount more.
+    Patching multiple files at once is probably only usefull for JSON files.
+    The patch content depends on what kind of file you are patching.
+    Currently the patching system supports these kinds of files:
+    
+    
+    LUA:
+        The content is LUA source code and will be inserted into the patched file.
+        (The insertion will happen at the end of the file (but before the return), so you can redefine/override variables and functions declared in the file)
+        
+        
+    Spritesheet Definitions (SHEET.JSON):
+        Allows for adding or replacing of sprites (even with different dimensions).
+        The content is a json object with the following structure:
+        {
+            "sprites": [
+                //array of sprite objects (see examples for structure)
+            ]
+        }
+        
+        Every sprite object has this structure:
+        {
+            "name": "...", (sprite name to add/replace)
+            "file": "includes/...", (file name of sprite image, this file must be in /includes/... and will be packed with the mod)
+            
+            "pivot": [ 0, 0 ], (sprite values, exact usage unknown)
+            "duration": 0,
+            "rotated": false
+        }
+        
+        See the example for how a complete patch looks.
+        
+        
+    JSON (other than spritesheets):
+        The content is a json object with the following structure:
+        {
+            "patches": [
+                //array of patch objects (see examples for structure)
+            ]
+        }
+        
+        Every patch object has this structure:
+        {
+            "path": "path.to.value[0].name",
+            "operation": "SET",
+            "value": //any json value (Object,Array or Primitve(String, ...))
+        }
+        
+        The path describes the path to the JSON value to modify.
+        (Exclude the root entry of the extracted JSON files, because it is automatically used as the root)
+        You can follow named entries with ".<name>" and specify specific array elements with ".<name>[<index>]"
+        Some examples: 
+            "en-GB.modpacker_example"
+            "commanders[0].portrait.happy"
+            
+        There are (currently) two operations:
+            "SET":
+                Set (by adding or replacing) the specified value
+            "SET_IF_MISSING":
+                Set the specified value if it is not present
+            "INSERT":
+                Insert the specified value into an array (-> path must point to an array)
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    
+    Example LUA Patch: 
+    (This patch would disable random damage variation)
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
+    patches:gameplay.dat_unpacked/section_0/lua/wargroove/combat.lua
+    --disable randomized damage
+    randomDamageMin = 0.0
+    randomDamageMax = 0.0
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    
+    Example JSON Patch: 
+    (Adding new entries to a language file, this should always be done with patches to avoid conflicts with other mods)
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
+    patches:config.dat_unpacked/section_0/strings/en-GB.config.json
+    {
+        "patches": [
+            {
+                "path": "en-GB.modpacker_example",
+                "operation": "SET",
+                "value": "S:This is an example text..."
+            },
+            {
+                "path": "en-GB.modpacker_example2",
+                "operation": "SET",
+                "value": "S:... and another one"
+            }
+        ]
+    }
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
+    
+    
+    Example JSON Patch: 
+    (Change regeneration rate of all structures)
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
+    patches:gameplay.dat_unpacked/section_1/gameplay/structures/barracks.config.json
+    patches:gameplay.dat_unpacked/section_1/gameplay/structures/city.config.json
+    patches:gameplay.dat_unpacked/section_1/gameplay/structures/hq.config.json
+    patches:gameplay.dat_unpacked/section_1/gameplay/structures/port.config.json
+    patches:gameplay.dat_unpacked/section_1/gameplay/structures/tower.config.json
+    patches:gameplay.dat_unpacked/section_1/gameplay/structures/water_city.config.json
+    {
+        "patches": [
+            {
+                "path": "unitClasses[0].regeneration",
+                "operation": "SET",
+                "value": "I:20"
+            }
+        ]
+    }
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
+    
+    
+    Example Spritesheet Patch: 
+    (In this case replacing the main menu logo with an image with different dimensions, but adding new sprites is also supported)
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
+    patches:ui.dat_unpacked/section_2/ui.sheet.json
+    {
+        "sprites": [
+            {
+                "name": ":img:ui/main_menu/logo.png",
+                "file": "includes/new_logo.png",
+                
+                "pivot": [ 0, 0 ],
+                "duration": 0,
+                "rotated": false
+            }
+        ]
+    }
+    ----------------------------------------------------------------------------------------------------------------------------------------------------------
